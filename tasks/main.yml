@@ -1,0 +1,38 @@
+---
+
+- name: Install apt-transport-https package
+  ansible.builtin.package:
+      name: apt-transport-https
+      state: latest
+  async: 120
+  poll: 10
+  when: ansible_os_family == "Debian" and not ansible_check_mode
+
+- name: Add GitLab Runner GPG key to APT
+  ansible.builtin.get_url:
+      url: "{{ gitlab_runner_gpg_key_url }}"
+      dest: /etc/apt/trusted.gpg.d/gitlab-runner.asc
+      mode: '0644'
+  when: ansible_os_family == "Debian"
+
+- name: Add GitLab repo to APT repositories
+  ansible.builtin.apt_repository:
+      repo: deb {{ gitlab_runner_packages_url }}/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} main
+      update_cache: true
+  when: ansible_os_family == "Debian"
+
+- name: Install GitLab Runner package
+  ansible.builtin.package:
+      name:
+          - gitlab-runner
+          - docker.io
+      state: latest
+  async: 300
+  poll: 10
+  when: not ansible_check_mode
+
+- name: Check installed GitLab Runner package
+  ansible.builtin.package:
+      name: gitlab-runner
+      state: latest
+  when: ansible_check_mode
